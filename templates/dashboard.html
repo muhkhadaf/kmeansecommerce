@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - K-Means Clustering Platform</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'poppins': ['Poppins', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: {
+                            50: '#fef2f2',
+                            100: '#fee2e2',
+                            200: '#fecaca',
+                            300: '#fca5a5',
+                            400: '#f87171',
+                            500: '#ef4444',
+                            600: '#dc2626',
+                            700: '#b91c1c',
+                            800: '#991b1b',
+                            900: '#7f1d1d',
+                        },
+                        secondary: {
+                            50: '#f9fafb',
+                            100: '#f3f4f6',
+                            200: '#e5e7eb',
+                            300: '#d1d5db',
+                            400: '#9ca3af',
+                            500: '#6b7280',
+                            600: '#4b5563',
+                            700: '#374151',
+                            800: '#1f2937',
+                            900: '#111827',
+                        }
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'pulse-slow': 'pulse 3s ease-in-out infinite',
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-up': 'slideUp 0.5s ease-out',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-10px)' }
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' }
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 50%, #4b5563 100%);
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen gradient-bg font-poppins">
+    <!-- Navigation -->
+    <nav class="glass-effect shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex items-center">
+                    <a href="{{ url_for('index') }}" class="flex items-center space-x-2 text-xl font-bold text-gray-800 hover:text-primary-600 transition-colors">
+                        <i class="fas fa-chart-scatter text-primary-600"></i>
+                        <span>K-Means Platform</span>
+                    </a>
+                </div>
+
+                <!-- Desktop Navigation -->
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="{{ url_for('index') }}" class="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                        <i class="fas fa-home mr-1"></i>Home
+                    </a>
+                    {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('dashboard') }}" class="bg-primary-100 text-primary-700 px-3 py-2 rounded-md text-sm font-medium">
+                            <i class="fas fa-tachometer-alt mr-1"></i>Dashboard
+                        </a>
+                        <a href="{{ url_for('scraping') }}" class="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                            <i class="fas fa-spider mr-1"></i>Scraping
+                        </a>
+                        <div class="relative group">
+                            <button class="flex items-center text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                                <i class="fas fa-user mr-1"></i>{{ current_user.username }}
+                                <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                            </button>
+                            <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                                <div class="py-1">
+                                    <a href="{{ url_for('user_profile') }}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                        <i class="fas fa-user-cog mr-2"></i>Kelola Profil
+                                    </a>
+                                    <hr class="my-1">
+                                    <a href="{{ url_for('logout') }}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <a href="{{ url_for('login') }}" class="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                            <i class="fas fa-sign-in-alt mr-1"></i>Login
+                        </a>
+                        <a href="{{ url_for('register') }}" class="bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-700 transition-colors">
+                            <i class="fas fa-user-plus mr-1"></i>Register
+                        </a>
+                    {% endif %}
+                </div>
+
+                <!-- Mobile menu button -->
+                <div class="md:hidden">
+                    <button id="mobile-menu-button" class="text-gray-700 hover:text-primary-600 focus:outline-none">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Navigation -->
+            <div id="mobile-menu" class="md:hidden hidden">
+                <div class="px-2 pt-2 pb-3 space-y-1 bg-white rounded-lg mt-2 shadow-lg">
+                    <a href="{{ url_for('index') }}" class="block px-3 py-2 text-gray-700 hover:text-primary-600 rounded-md text-base font-medium">
+                        <i class="fas fa-home mr-2"></i>Home
+                    </a>
+                    {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('dashboard') }}" class="block px-3 py-2 bg-primary-100 text-primary-700 rounded-md text-base font-medium">
+                            <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
+                        </a>
+                        <a href="{{ url_for('user_profile') }}" class="block px-3 py-2 text-gray-700 hover:text-primary-600 rounded-md text-base font-medium">
+                            <i class="fas fa-user-cog mr-2"></i>Kelola Profil
+                        </a>
+                        <a href="{{ url_for('logout') }}" class="block px-3 py-2 text-gray-700 hover:text-primary-600 rounded-md text-base font-medium">
+                            <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('login') }}" class="block px-3 py-2 text-gray-700 hover:text-primary-600 rounded-md text-base font-medium">
+                            <i class="fas fa-sign-in-alt mr-2"></i>Login
+                        </a>
+                        <a href="{{ url_for('register') }}" class="block px-3 py-2 bg-primary-600 text-white rounded-md text-base font-medium">
+                            <i class="fas fa-user-plus mr-2"></i>Register
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="mb-6">
+                    {% for category, message in messages %}
+                        <div class="bg-{{ 'red' if category == 'error' else 'green' }}-100 border border-{{ 'red' if category == 'error' else 'green' }}-400 text-{{ 'red' if category == 'error' else 'green' }}-700 px-4 py-3 rounded-lg mb-4 animate-fade-in">
+                            <div class="flex items-center">
+                                <i class="fas fa-{{ 'exclamation-triangle' if category == 'error' else 'check-circle' }} mr-2"></i>
+                                <span>{{ message }}</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Dashboard Header -->
+        <div class="text-center mb-12 animate-fade-in">
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
+                <i class="fas fa-tachometer-alt text-2xl text-primary-600"></i>
+            </div>
+            <h1 class="text-4xl font-bold text-white mb-4">
+                Dashboard Analytics
+            </h1>
+            <p class="text-xl text-white/80 max-w-2xl mx-auto">
+                Selamat datang, <span class="font-semibold text-white">{{ current_user.username }}</span>! 
+                Kelola dan analisis riwayat clustering Anda dengan mudah.
+            </p>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="flex flex-col sm:flex-row gap-4 justify-center mb-12 animate-slide-up">
+            <a href="{{ url_for('index') }}" class="inline-flex items-center justify-center px-8 py-4 bg-white text-primary-600 font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300">
+                <i class="fas fa-plus mr-3"></i>
+                Analisis Baru
+            </a>
+            <a href="{{ url_for('user_profile') }}" class="inline-flex items-center justify-center px-8 py-4 bg-primary-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:bg-primary-700 transform hover:-translate-y-1 transition-all duration-300">
+                <i class="fas fa-user-cog mr-3"></i>
+                Kelola Profil
+            </a>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <div class="glass-effect rounded-2xl p-6 text-center card-hover animate-slide-up">
+                <div class="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-4">
+                    <i class="fas fa-chart-bar text-blue-600"></i>
+                </div>
+                <div class="text-3xl font-bold text-gray-800 mb-2">{{ clustering_results|length }}</div>
+                <div class="text-gray-600 font-medium">Total Analisis</div>
+            </div>
+            
+            <div class="glass-effect rounded-2xl p-6 text-center card-hover animate-slide-up" style="animation-delay: 0.1s;">
+                <div class="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mb-4">
+                    <i class="fas fa-star text-green-600"></i>
+                </div>
+                <div class="text-3xl font-bold text-gray-800 mb-2">
+                    {% if clustering_results %}
+                        {{ "%.3f"|format(clustering_results|map(attribute='silhouette_score')|list|sum / clustering_results|length) }}
+                    {% else %}
+                        0.000
+                    {% endif %}
+                </div>
+                <div class="text-gray-600 font-medium">Rata-rata Silhouette Score</div>
+            </div>
+            
+            <div class="glass-effect rounded-2xl p-6 text-center card-hover animate-slide-up" style="animation-delay: 0.2s;">
+                <div class="inline-flex items-center justify-center w-12 h-12 bg-purple-100 rounded-full mb-4">
+                    <i class="fas fa-layer-group text-purple-600"></i>
+                </div>
+                <div class="text-3xl font-bold text-gray-800 mb-2">
+                    {% if clustering_results %}
+                        {{ clustering_results|map(attribute='optimal_k')|list|sum // clustering_results|length }}
+                    {% else %}
+                        0
+                    {% endif %}
+                </div>
+                <div class="text-gray-600 font-medium">Rata-rata Optimal K</div>
+            </div>
+        </div>
+
+        <!-- Clustering History -->
+        <div class="glass-effect rounded-2xl p-6 animate-slide-up" style="animation-delay: 0.3s;">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">
+                    <i class="fas fa-history mr-3 text-primary-600"></i>
+                    Riwayat Clustering
+                </h2>
+            </div>
+            
+            {% if clustering_results %}
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-200">
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Tanggal</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Nama File</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Optimal K</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Silhouette Score</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Inertia</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for result in clustering_results %}
+                            <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                <td class="py-4 px-4 text-gray-600">{{ result.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td class="py-4 px-4 text-gray-800 font-medium">{{ result.filename }}</td>
+                                <td class="py-4 px-4">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        {{ result.optimal_k }}
+                                    </span>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        {{ "%.3f"|format(result.silhouette_score) }}
+                                    </span>
+                                </td>
+                                <td class="py-4 px-4 text-gray-600">{{ "%.2f"|format(result.inertia) }}</td>
+                                <td class="py-4 px-4">
+                                    <a href="{{ url_for('show_results', session_id=result.session_id) }}" 
+                                       class="inline-flex items-center px-3 py-1.5 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors">
+                                        <i class="fas fa-eye mr-1"></i>
+                                        Lihat Hasil
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-12">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                        <i class="fas fa-chart-scatter text-2xl text-gray-400"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-2">Belum ada analisis clustering</h3>
+                    <p class="text-gray-600 mb-6 max-w-md mx-auto">
+                        Mulai dengan mengunggah dataset dan menjalankan analisis clustering pertama Anda.
+                    </p>
+                    <a href="{{ url_for('index') }}" 
+                       class="inline-flex items-center px-6 py-3 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 transition-colors">
+                        <i class="fas fa-plus mr-2"></i>
+                        Mulai Analisis
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Mobile menu toggle
+        document.getElementById('mobile-menu-button').addEventListener('click', function() {
+            const mobileMenu = document.getElementById('mobile-menu');
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Add animation delays to cards
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.card-hover');
+            cards.forEach((card, index) => {
+                card.style.animationDelay = `${index * 0.1}s`;
+            });
+        });
+    </script>
+</body>
+</html>

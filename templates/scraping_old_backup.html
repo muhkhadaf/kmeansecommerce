@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scraping Tokopedia - K-Means Clustering</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+                <i class="fas fa-chart-scatter-3d me-2"></i>K-Means Clustering
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('scraping') }}">
+                            <i class="fas fa-spider me-1"></i>Scraping
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">
+                            <i class="fas fa-upload me-1"></i>Upload CSV
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('scraping') }}">
+                            <i class="fas fa-spider me-1"></i>Scraping Tokopedia
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user me-1"></i>{{ current_user.username }}
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('user_profile') }}">
+                                <i class="fas fa-user-cog me-1"></i>Profile
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('logout') }}">
+                                <i class="fas fa-sign-out-alt me-1"></i>Logout
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Header Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center bg-gradient-primary text-white rounded">
+                        <h1 class="card-title mb-3">
+                            <i class="fas fa-spider me-2"></i>Scraping Data Tokopedia
+                        </h1>
+                        <p class="card-text lead">
+                            Ambil data produk dari Tokopedia untuk analisis clustering
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-{{ 'exclamation-triangle' if category == 'error' else 'info-circle' }} me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="row">
+            <!-- Scraping Form -->
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-cog me-2"></i>Konfigurasi Scraping
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" id="scrapingForm">
+                            {{ form.hidden_tag() }}
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    {{ form.search_type.label(class="form-label fw-bold") }}
+                                    {{ form.search_type(class="form-select") }}
+                                    {% if form.search_type.errors %}
+                                        <div class="text-danger small">
+                                            {% for error in form.search_type.errors %}
+                                                <div>{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    {{ form.max_products.label(class="form-label fw-bold") }}
+                                    {{ form.max_products }}
+                                    {% if form.max_products.errors %}
+                                        <div class="text-danger small">
+                                            {% for error in form.max_products.errors %}
+                                                <div>{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">Maksimal 1000 produk per scraping</div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                {{ form.keyword.label(class="form-label fw-bold") }}
+                                {{ form.keyword }}
+                                {% if form.keyword.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.keyword.errors %}
+                                            <div>{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">
+                                    <strong>Contoh keyword:</strong> laptop gaming, baju muslim, smartphone, sepatu olahraga
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        {{ form.include_reviews }}
+                                        {{ form.include_reviews.label(class="form-check-label") }}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        {{ form.include_shop_info }}
+                                        {{ form.include_shop_info.label(class="form-check-label") }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                {{ form.notes.label(class="form-label fw-bold") }}
+                                {{ form.notes }}
+                                {% if form.notes.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.notes.errors %}
+                                            <div>{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="d-grid">
+                                {{ form.submit(class="btn btn-primary btn-lg", id="submitBtn") }}
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Info Panel -->
+            <div class="col-lg-4">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="card-title mb-0">
+                            <i class="fas fa-info-circle me-2"></i>Informasi Scraping
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <h6 class="text-primary">
+                                <i class="fas fa-database me-1"></i>Data yang Diambil:
+                            </h6>
+                            <ul class="list-unstyled small">
+                                <li><i class="fas fa-check text-success me-1"></i>Nama Produk</li>
+                                <li><i class="fas fa-check text-success me-1"></i>Harga</li>
+                                <li><i class="fas fa-check text-success me-1"></i>Rating</li>
+                                <li><i class="fas fa-check text-success me-1"></i>Jumlah Review</li>
+                                <li><i class="fas fa-check text-success me-1"></i>Nama Toko</li>
+                                <li><i class="fas fa-check text-success me-1"></i>Lokasi</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6 class="text-warning">
+                                <i class="fas fa-shield-alt me-1"></i>Fitur Keamanan:
+                            </h6>
+                            <ul class="list-unstyled small">
+                                <li><i class="fas fa-clock text-warning me-1"></i>Delay otomatis</li>
+                                <li><i class="fas fa-user-secret text-warning me-1"></i>Rotasi User-Agent</li>
+                                <li><i class="fas fa-limit text-warning me-1"></i>Rate Limiting</li>
+                                <li><i class="fas fa-bug text-warning me-1"></i>Error Handling</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="alert alert-warning small">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            <strong>Catatan:</strong> Proses scraping membutuhkan waktu beberapa menit tergantung jumlah data.
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recent Scraping History -->
+                <div class="card shadow-sm">
+                    <div class="card-header bg-secondary text-white">
+                        <h6 class="card-title mb-0">
+                            <i class="fas fa-history me-2"></i>Scraping Terakhir
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        {% if recent_scraping %}
+                            {% for scraping in recent_scraping %}
+                                <div class="border-bottom pb-2 mb-2">
+                                    <div class="d-flex justify-content-between">
+                                        <small class="text-muted">{{ scraping.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                                        <span class="badge bg-{{ 'success' if scraping.status == 'completed' else 'warning' }}">
+                                            {{ scraping.status }}
+                                        </span>
+                                    </div>
+                                    <div class="fw-bold small">{{ scraping.keyword }}</div>
+                                    <div class="text-muted small">{{ scraping.total_products }} produk</div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted small mb-0">Belum ada history scraping</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Modal -->
+    <div class="modal fade" id="progressModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-spinner fa-spin me-2"></i>Proses Scraping
+                    </h5>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="fw-bold">Progress:</span>
+                            <span id="progressPercent">0%</span>
+                        </div>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 id="progressBar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong>Status:</strong>
+                        <div id="progressMessage" class="text-muted">Memulai proses scraping...</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong>Detail:</strong>
+                        <div id="progressDetails" class="small text-muted">
+                            <div>Keyword: <span id="scrapingKeyword">-</span></div>
+                            <div>Target: <span id="scrapingTarget">-</span> produk</div>
+                            <div>Waktu mulai: <span id="scrapingStartTime">-</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info small">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Jangan tutup halaman ini selama proses scraping berlangsung.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancelScraping" disabled>
+                        <i class="fas fa-times me-1"></i>Batalkan
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Socket.IO connection
+        const socket = io();
+        let currentSessionId = null;
+        
+        // Form submission
+        document.getElementById('scrapingForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const keyword = formData.get('keyword');
+            const maxProducts = formData.get('max_products');
+            
+            // Update progress modal details
+            document.getElementById('scrapingKeyword').textContent = keyword;
+            document.getElementById('scrapingTarget').textContent = maxProducts;
+            document.getElementById('scrapingStartTime').textContent = new Date().toLocaleString('id-ID');
+            
+            // Show progress modal
+            const progressModal = new bootstrap.Modal(document.getElementById('progressModal'));
+            progressModal.show();
+            
+            // Submit form via AJAX
+            fetch('/start_scraping', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    currentSessionId = data.session_id;
+                    socket.emit('join', {room: currentSessionId});
+                } else {
+                    progressModal.hide();
+                    const errorMsg = data.errors ? data.errors.join(', ') : (data.error || 'Terjadi kesalahan');
+                    alert('Error: ' + errorMsg);
+                }
+            })
+            .catch(error => {
+                progressModal.hide();
+                alert('Error: ' + error.message);
+            });
+        });
+        
+        // Socket.IO event handlers
+        socket.on('scraping_progress', function(data) {
+            document.getElementById('progressBar').style.width = data.progress + '%';
+            document.getElementById('progressPercent').textContent = data.progress + '%';
+            document.getElementById('progressMessage').textContent = data.message;
+        });
+        
+        socket.on('scraping_complete', function(data) {
+            setTimeout(() => {
+                window.location.href = '/scraping/results/' + currentSessionId;
+            }, 2000);
+        });
+        
+        socket.on('scraping_error', function(data) {
+            document.getElementById('progressMessage').innerHTML = 
+                '<span class="text-danger">Error: ' + data.error + '</span>';
+            document.getElementById('cancelScraping').disabled = false;
+            document.getElementById('cancelScraping').textContent = 'Tutup';
+        });
+        
+        // Cancel scraping
+        document.getElementById('cancelScraping').addEventListener('click', function() {
+            if (currentSessionId) {
+                fetch('/scraping/cancel/' + currentSessionId, {method: 'POST'});
+            }
+            window.location.reload();
+        });
+    </script>
+</body>
+</html>

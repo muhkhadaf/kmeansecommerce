@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Processing Data - K-Means Clustering Platform</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Socket.IO -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'poppins': ['Poppins', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: {
+                            50: '#fef2f2',
+                            100: '#fee2e2',
+                            200: '#fecaca',
+                            300: '#fca5a5',
+                            400: '#f87171',
+                            500: '#ef4444',
+                            600: '#dc2626',
+                            700: '#b91c1c',
+                            800: '#991b1b',
+                            900: '#7f1d1d',
+                        },
+                        secondary: {
+                            50: '#f9fafb',
+                            100: '#f3f4f6',
+                            200: '#e5e7eb',
+                            300: '#d1d5db',
+                            400: '#9ca3af',
+                            500: '#6b7280',
+                            600: '#4b5563',
+                            700: '#374151',
+                            800: '#1f2937',
+                            900: '#111827',
+                        }
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'progress': 'progress 2s linear infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        },
+                        progress: {
+                            '0%': { backgroundPosition: '0 0' },
+                            '100%': { backgroundPosition: '50px 50px' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 50%, #4b5563 100%);
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .progress-bar-animated {
+            background-image: linear-gradient(
+                45deg,
+                rgba(255, 255, 255, 0.15) 25%,
+                transparent 25%,
+                transparent 50%,
+                rgba(255, 255, 255, 0.15) 50%,
+                rgba(255, 255, 255, 0.15) 75%,
+                transparent 75%,
+                transparent
+            );
+            background-size: 50px 50px;
+            animation: progress-move 2s linear infinite;
+        }
+        
+        @keyframes progress-move {
+            0% {
+                background-position: 0 0;
+            }
+            100% {
+                background-position: 50px 0;
+            }
+        }
+        
+        .animate-pulse-slow {
+            animation: pulse-slow 3s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-slow {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scale(1.05);
+            }
+        }
+    </style>
+</head>
+<body class="h-full gradient-bg font-poppins">
+    <!-- Navigation -->
+    <nav class="glass-effect shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex items-center">
+                    <a href="{{ url_for('index') }}" class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-gradient-to-r from-primary-600 to-primary-700 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-chart-scatter text-white text-lg"></i>
+                        </div>
+                        <span class="text-xl font-bold text-gray-900">K-Means Platform</span>
+                    </a>
+                </div>
+
+                <!-- Desktop Navigation -->
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="{{ url_for('index') }}" class="text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition duration-200">
+                            <i class="fas fa-home mr-2"></i>Home
+                        </a>
+                        {% if current_user.is_authenticated %}
+                            <a href="{{ url_for('dashboard') }}" class="text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition duration-200">
+                                <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
+                            </a>
+                            <div class="relative group">
+                                <button class="text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition duration-200 flex items-center">
+                                    <i class="fas fa-user mr-2"></i>{{ current_user.username }}
+                                    <i class="fas fa-chevron-down ml-2 text-xs"></i>
+                                </button>
+                                <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                                    <a href="{{ url_for('user_profile') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                        <i class="fas fa-user-cog mr-2"></i>Kelola Profil
+                                    </a>
+                                    <a href="{{ url_for('logout') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                                    </a>
+                                </div>
+                            </div>
+                        {% else %}
+                            <a href="{{ url_for('login') }}" class="text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition duration-200">
+                                <i class="fas fa-sign-in-alt mr-2"></i>Login
+                            </a>
+                            <a href="{{ url_for('register') }}" class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-200">
+                                <i class="fas fa-user-plus mr-2"></i>Register
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Mobile menu button -->
+                <div class="md:hidden">
+                    <button type="button" class="text-gray-700 hover:text-gray-900 focus:outline-none focus:text-gray-900" id="mobile-menu-button">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile menu -->
+        <div class="md:hidden hidden" id="mobile-menu">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t border-gray-200">
+                <a href="{{ url_for('index') }}" class="text-gray-700 hover:bg-gray-100 block px-3 py-2 rounded-md text-base font-medium">
+                    <i class="fas fa-home mr-2"></i>Home
+                </a>
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('dashboard') }}" class="text-gray-700 hover:bg-gray-100 block px-3 py-2 rounded-md text-base font-medium">
+                        <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
+                    </a>
+                    <a href="{{ url_for('user_profile') }}" class="text-gray-700 hover:bg-gray-100 block px-3 py-2 rounded-md text-base font-medium">
+                        <i class="fas fa-user-cog mr-2"></i>Kelola Profil
+                    </a>
+                    <a href="{{ url_for('logout') }}" class="text-gray-700 hover:bg-gray-100 block px-3 py-2 rounded-md text-base font-medium">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="text-gray-700 hover:bg-gray-100 block px-3 py-2 rounded-md text-base font-medium">
+                        <i class="fas fa-sign-in-alt mr-2"></i>Login
+                    </a>
+                    <a href="{{ url_for('register') }}" class="bg-primary-600 hover:bg-primary-700 text-white block px-3 py-2 rounded-md text-base font-medium">
+                        <i class="fas fa-user-plus mr-2"></i>Register
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-2xl w-full">
+            <div class="glass-effect rounded-2xl p-8 shadow-2xl text-center">
+                <!-- Progress Icon -->
+                <div class="text-6xl text-primary-600 mb-6 animate-pulse-slow">
+                    <i class="fas fa-cogs"></i>
+                </div>
+                
+                <!-- Title -->
+                <h1 class="text-3xl font-bold text-gray-900 mb-4">Memproses Data</h1>
+                <p class="text-gray-600 text-lg mb-8">
+                    Sedang melakukan analisis K-Means clustering pada data Anda
+                    <span class="inline-block animate-pulse">...</span>
+                </p>
+                
+                <!-- Step Indicator -->
+                <div class="flex justify-between items-center mb-8 relative">
+                    <div class="absolute top-4 left-0 w-full h-0.5 bg-gray-200 z-0"></div>
+                    
+                    <div class="flex-1 text-center relative z-10" id="step-upload">
+                        <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center mx-auto mb-2 text-sm font-semibold transition-all duration-300">1</div>
+                        <div class="text-xs text-gray-500 font-medium">Upload</div>
+                    </div>
+                    <div class="flex-1 text-center relative z-10" id="step-preprocessing">
+                        <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center mx-auto mb-2 text-sm font-semibold transition-all duration-300">2</div>
+                        <div class="text-xs text-gray-500 font-medium">Preprocessing</div>
+                    </div>
+                    <div class="flex-1 text-center relative z-10" id="step-clustering">
+                        <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center mx-auto mb-2 text-sm font-semibold transition-all duration-300">3</div>
+                        <div class="text-xs text-gray-500 font-medium">Clustering</div>
+                    </div>
+                    <div class="flex-1 text-center relative z-10" id="step-visualization">
+                        <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center mx-auto mb-2 text-sm font-semibold transition-all duration-300">4</div>
+                        <div class="text-xs text-gray-500 font-medium">Visualisasi</div>
+                    </div>
+                    <div class="flex-1 text-center relative z-10" id="step-complete">
+                        <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center mx-auto mb-2 text-sm font-semibold transition-all duration-300">5</div>
+                        <div class="text-xs text-gray-500 font-medium">Selesai</div>
+                    </div>
+                </div>
+                
+                <!-- Progress Bar -->
+                <div class="w-full bg-gray-200 rounded-full h-5 mb-4 overflow-hidden shadow-inner">
+                    <div class="h-full bg-gradient-to-r from-primary-600 to-primary-700 rounded-full transition-all duration-500 ease-out relative progress-bar-animated" id="progress-bar" style="width: 0%"></div>
+                </div>
+                
+                <!-- Progress Text -->
+                <div class="text-2xl font-bold text-gray-900 mb-2" id="progress-percentage">0%</div>
+                <div class="text-gray-600 italic mb-8 min-h-[1.5rem]" id="progress-message">Memulai proses...</div>
+                
+                <!-- Detail Progress Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <div class="text-sm text-gray-500 mb-1">Status</div>
+                        <div class="font-semibold text-gray-900" id="current-status">Menunggu</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <div class="text-sm text-gray-500 mb-1">Waktu Berlalu</div>
+                        <div class="font-semibold text-gray-900" id="elapsed-time">00:00</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <div class="text-sm text-gray-500 mb-1">Estimasi</div>
+                        <div class="font-semibold text-gray-900" id="estimated-time">Menghitung...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="glass-effect mt-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="w-8 h-8 bg-gradient-to-r from-primary-600 to-primary-700 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-chart-scatter text-white text-sm"></i>
+                        </div>
+                        <span class="text-lg font-bold text-gray-900">K-Means Platform</span>
+                    </div>
+                    <p class="text-gray-600">
+                        Platform machine learning terdepan untuk analisis clustering data dengan teknologi canggih dan interface yang user-friendly.
+                    </p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Fitur</h3>
+                    <ul class="space-y-2 text-gray-600">
+                        <li><i class="fas fa-check text-primary-600 mr-2"></i>K-Means Clustering</li>
+                        <li><i class="fas fa-check text-primary-600 mr-2"></i>Preprocessing Otomatis</li>
+                        <li><i class="fas fa-check text-primary-600 mr-2"></i>Visualisasi Data</li>
+                        <li><i class="fas fa-check text-primary-600 mr-2"></i>Export Results</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Kontak</h3>
+                    <div class="space-y-2 text-gray-600">
+                        <p><i class="fas fa-envelope text-primary-600 mr-2"></i>support@kmeans-platform.com</p>
+                        <p><i class="fas fa-phone text-primary-600 mr-2"></i>+62 123 456 7890</p>
+                        <p><i class="fas fa-map-marker-alt text-primary-600 mr-2"></i>Jakarta, Indonesia</p>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-200 mt-8 pt-8 text-center">
+                <p class="text-gray-600">&copy; 2024 K-Means Platform. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Socket.IO
+        const socket = io();
+        const sessionId = '{{ session_id }}';
+        let startTime = Date.now();
+        
+        // Update elapsed time
+        function updateElapsedTime() {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            document.getElementById('elapsed-time').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        setInterval(updateElapsedTime, 1000);
+        
+        // Step mapping
+        const stepMapping = {
+            'upload': 'step-upload',
+            'preprocessing': 'step-preprocessing', 
+            'clustering': 'step-clustering',
+            'visualization': 'step-visualization',
+            'complete': 'step-complete'
+        };
+        
+        // Update step indicator
+        function updateStepIndicator(currentStep) {
+            // Reset all steps
+            Object.values(stepMapping).forEach(stepId => {
+                const stepElement = document.getElementById(stepId);
+                const circle = stepElement.querySelector('div:first-child');
+                const label = stepElement.querySelector('div:last-child');
+                
+                // Reset to default state
+                circle.className = 'w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center mx-auto mb-2 text-sm font-semibold transition-all duration-300';
+                label.className = 'text-xs text-gray-500 font-medium';
+            });
+            
+            // Mark completed and active steps
+            let foundCurrent = false;
+            Object.entries(stepMapping).forEach(([step, stepId]) => {
+                const stepElement = document.getElementById(stepId);
+                const circle = stepElement.querySelector('div:first-child');
+                const label = stepElement.querySelector('div:last-child');
+                
+                if (step === currentStep) {
+                    // Active step
+                    circle.className = 'w-8 h-8 rounded-full bg-primary-600 text-white flex items-center justify-center mx-auto mb-2 text-sm font-semibold transition-all duration-300 transform scale-110';
+                    label.className = 'text-xs text-primary-600 font-semibold';
+                    foundCurrent = true;
+                } else if (!foundCurrent) {
+                    // Completed steps
+                    circle.className = 'w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center mx-auto mb-2 text-sm font-semibold transition-all duration-300';
+                    label.className = 'text-xs text-green-600 font-semibold';
+                }
+            });
+        }
+        
+        // Listen for progress updates
+        socket.on('progress_update', function(data) {
+            const progress = Math.round(data.progress);
+            const message = data.message || 'Memproses...';
+            const step = data.step || 'upload';
+                
+                // Update progress bar
+                 document.getElementById('progress-bar').style.width = progress + '%';
+                 document.getElementById('progress-percentage').textContent = progress + '%';
+                 document.getElementById('progress-message').textContent = message;
+                 document.getElementById('current-status').textContent = message;
+                
+                // Update step indicator
+                updateStepIndicator(step);
+                
+                // Update estimated time
+                if (progress > 0) {
+                    const elapsed = (Date.now() - startTime) / 1000;
+                    const estimated = Math.round((elapsed / progress) * (100 - progress));
+                    const estMinutes = Math.floor(estimated / 60);
+                    const estSeconds = estimated % 60;
+                    document.getElementById('estimated-time').textContent = 
+                        `${estMinutes.toString().padStart(2, '0')}:${estSeconds.toString().padStart(2, '0')}`;
+                }
+                
+                // Handle error state
+                if (step === 'error') {
+                    const progressBar = document.getElementById('progress-bar');
+                    progressBar.className = progressBar.className.replace('bg-gradient-to-r from-primary-600 to-primary-700', 'bg-gradient-to-r from-red-500 to-red-600');
+                    
+                    // Update progress icon to error
+                    const progressIcon = document.querySelector('.text-primary-600');
+                    if (progressIcon) {
+                        progressIcon.className = progressIcon.className.replace('text-primary-600', 'text-red-500');
+                        progressIcon.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+                    }
+                    
+                    document.getElementById('progress-percentage').textContent = 'Error!';
+                     document.getElementById('progress-message').textContent = message;
+                     document.getElementById('current-status').textContent = 'Error';
+                     document.getElementById('estimated-time').textContent = 'N/A';
+                    
+                    // Show error message and redirect back to index
+                    setTimeout(() => {
+                        alert('Terjadi kesalahan saat memproses data. Silakan coba lagi.');
+                        window.location.href = '/';
+                    }, 3000);
+                    return;
+                }
+                
+                // Redirect when complete
+                if (progress >= 100 || step === 'complete') {
+                    setTimeout(() => {
+                        window.location.href = `/results/${sessionId}`;
+                    }, 2000);
+                }
+        });
+        
+        // Listen for clustering completion
+        socket.on('clustering_complete', function(data) {
+            console.log('Clustering completed, redirecting to:', data.redirect_url);
+            setTimeout(() => {
+                window.location.href = data.redirect_url;
+            }, 1000);
+        });
+        
+        // Connect to session room
+        socket.emit('join', {session_id: sessionId});
+        
+        // Handle connection events
+        socket.on('connect', function() {
+            console.log('Connected to server');
+        });
+        
+        socket.on('disconnect', function() {
+            console.log('Disconnected from server');
+        });
+        
+        // Initial step
+        updateStepIndicator('upload');
+        document.getElementById('step-upload').classList.add('completed');
+        updateStepIndicator('preprocessing');
+    </script>
+</body>
+</html>

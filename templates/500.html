@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Error - K-Means Clustering</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .error-container {
+            text-align: center;
+            padding: 50px 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .error-code {
+            font-size: 6rem;
+            font-weight: bold;
+            color: #e74c3c;
+            margin-bottom: 20px;
+        }
+        .error-message {
+            font-size: 1.5rem;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .error-description {
+            color: #7f8c8d;
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+        .back-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: transform 0.3s ease;
+            margin: 10px;
+        }
+        .back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="error-container">
+            <div class="error-code">500</div>
+            <div class="error-message">Internal Server Error</div>
+            <div class="error-description">
+                Maaf, terjadi kesalahan pada server. Tim kami sedang bekerja untuk memperbaiki masalah ini.
+                Silakan coba lagi dalam beberapa saat atau hubungi administrator jika masalah berlanjut.
+            </div>
+            <a href="{{ url_for('index') }}" class="back-button">
+                🏠 Kembali ke Beranda
+            </a>
+            <a href="javascript:history.back()" class="back-button">
+                ↩️ Kembali
+            </a>
+        </div>
+    </div>
+</body>
+</html>
