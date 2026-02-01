@@ -55,18 +55,25 @@ Tips: Menggunakan ${{MySQL.VAR}} adalah fitur "Reference" Railway. Jika Anda men
 Langkah 5: Setup Tabel Database
 Aplikasi sudah terhubung, tapi databasenya masih kosong. Anda perlu mengimpor struktur tabel.
 
-Cara Paling Mudah (via Railway CLI / Query):
+Cara Setup Database (Menggunakan Script Otomatis):
 
-Klik service MySQL di Railway.
-Buka tab "Data".
-Anda bisa menjalankan query SQL di sini.
-Buka file 
-kmeans_clustering_web.sql
- di project lokal Anda.
-Copy semua isinya, lalu paste ke terminal SQL di Railway (jika tersedia) atau gunakan tool database manager seperti DBeaver atau HeidiSQL untuk connect ke database Railway (gunakan kredensial dari tab Connect) dan import file SQL tersebut.
-Alternatif (jika fitur Data Railway terbatas): Gunakan DBeaver/HeidiSQL di laptop Anda:
+Saya telah menyiapkan script `import_db.py` untuk memudahkan Anda mengisi database tanpa aplikasi tambahan.
 
-Host: (Lihat di tab Connect Railway -> Public Networking. Jika belum ada, klik "Generate Domain" di service MySQL tapi ini biasanya berbayar/pro. Untuk pengguna free, biasanya koneksi internal sudah cukup, tapi untuk import awal butuh akses luar. Saran: Gunakan TCP Proxy yang disediakan Railway di tab Connect untuk akses dari DBeaver).
+1.  **Dapatkan Detail Koneksi dari Railway**:
+    *   Klik service **MySQL** di Railway.
+    *   Buka tab **"Connect"**.
+    *   Jika belum ada "TCP Proxy", klik **"Private Networking"** atau lihat bagian "Public Networking" jika tersedia. Saran: Gunakan **TCP Proxy** yang biasanya tersedia di tab Connect. Copy detailnya (Host, Port, User, Password).
+
+2.  **Jalankan Script Import**:
+    *   Buka terminal di folder project ini.
+    *   Jalankan perintah:
+        ```bash
+        python import_db.py
+        ```
+    *   Masukkan data yang diminta (Host, Port, User, Password, Database Name) sesuai yang ada di Railway.
+    *   Tunggu hingga script menampilkan pesan "Sukses".
+
+    *Catatan: Jika script gagal connect, pastikan Anda menggunakan Host dan Port dari TCP Proxy Railway (domain biasanya berakhiran `.rlwy.net`), bukan internal host.*
 Langkah 6: Generate Domain (Agar bisa diakses publik)
 Klik pada service aplikasi Flask Anda.
 Buka tab "Settings".
