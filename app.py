@@ -958,6 +958,85 @@ def internal_error(e):
     """Handle internal server error"""
     return render_template('500.html'), 500
 
+@app.route('/test_db')
+def test_db():
+    """Route untuk debugging koneksi database"""
+    import mysql.connector
+    from config import Config
+    
+    # Get config values
+    host = Config.MYSQL_HOST
+    port = Config.MYSQL_PORT
+    user = Config.MYSQL_USER
+    password = Config.MYSQL_PASSWORD
+    db_name = Config.MYSQL_DATABASE
+    
+    # Mask password for display
+    masked_password = '*' * len(password) if password else 'Empty'
+    
+    connection_status = "Unknown"
+    error_message = ""
+    
+    try:
+        # Attempt connection
+        conn = mysql.connector.connect(
+            host=host,
+            port=port,
+            user=user,
+            password=password,
+            database=db_name,
+            connect_timeout=5
+        )
+        if conn.is_connected():
+            connection_status = "✅ Connected Successfully!"
+            # Get server info
+            db_info = f"MySQL Server Info: {conn.get_server_info()}"
+            conn.close()
+        else:
+            connection_status = "❌ Connection Failed (Unknown Error)"
+    except Exception as e:
+        connection_status = "❌ Connection Failed"
+        error_message = str(e)
+        db_info = "N/A"
+
+    # HTML Template for debug page
+    html = f"""
+    <html>
+    <head>
+        <title>Database Connection Test</title>
+        <style>
+            body {{ font-family: monospace; padding: 20px; background: #f0f0f0; }}
+            .card {{ background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }}
+            .success {{ color: green; font-weight: bold; }}
+            .error {{ color: red; font-weight: bold; }}
+            pre {{ background: #eee; padding: 10px; border-radius: 4px; overflow-x: auto; }}
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h2>🛠️ Database Connection Debugger</h2>
+            <hr>
+            <h3>Configuration Used:</h3>
+            <ul>
+                <li><strong>Host:</strong> {host}</li>
+                <li><strong>Port:</strong> {port}</li>
+                <li><strong>User:</strong> {user}</li>
+                <li><strong>Password:</strong> {masked_password}</li>
+                <li><strong>Database:</strong> {db_name}</li>
+            </ul>
+            <hr>
+            <h3>Connection Result:</h3>
+            <p class="{'success' if 'Success' in connection_status else 'error'}">{connection_status}</p>
+            {f'<pre>{error_message}</pre>' if error_message else ''}
+            <p><em>{db_info}</em></p>
+            <hr>
+            <p><a href="/">Back to Home</a></p>
+        </div>
+    </body>
+    </html>
+    """
+    return html
+
 if __name__ == '__main__':
     # Buat direktori yang diperlukan
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
