@@ -555,8 +555,8 @@ def download_results(session_id):
             return redirect(url_for('dashboard'))
         
         # Parse clustered data dari JSON
-        if result_data['clustered_data']:
-            clustered_df = pd.read_json(result_data['clustered_data'])
+        if result_data['original_data'] is not None:
+            clustered_df = result_data['original_data']
             
             # Buat file CSV dalam memory
             output = io.StringIO()
@@ -596,8 +596,8 @@ def download_cluster(session_id, cluster_id):
             return redirect(url_for('dashboard'))
         
         # Parse clustered data dari JSON
-        if result_data['clustered_data']:
-            clustered_df = pd.read_json(result_data['clustered_data'])
+        if result_data['original_data'] is not None:
+            clustered_df = result_data['original_data']
             
             # Filter data untuk cluster tertentu
             if 'Cluster' not in clustered_df.columns:
